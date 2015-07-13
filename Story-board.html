@@ -1,0 +1,256 @@
+<html>
+	<head>
+		<!--script type="text/javascript" src="http://code.jquery.com/jquery-2.1.4.min.js"></script-->
+		<script type="text/javascript" src="jquery-2.1.4.min.js"></script>
+		<!--script type="text/javascript" src="http://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script-->
+		<script type="text/javascript" src="jquery-ui.min.js"></script>
+		<!--script type="text/javascript" src="https://raw.githubusercontent.com/yaml/js-yaml/master/js-yaml.min.js"></script-->
+		<!--script type="text/javascript" src="js-yaml.js"></script-->
+		<script type="text/javascript" src="bower_components/js-yaml/dist/js-yaml.js"></script>
+		<style>
+		html, td {
+			font-family: Avenir next, sans-serif;
+			font-size: 13px;
+		}
+
+		body {
+			display: flex;
+		}
+		.version {
+			padding: 5px;
+			border-bottom: 2px solid black;
+		}
+		.version th {
+			vertical-align: bottom;
+		}
+		#storyboard {
+			border-collapse: collapse;
+		}
+		.area {
+			vertical-align: top;
+			border-left: 1px solid #eee;
+		}
+		.card,
+		.placeholder {
+			margin: 3px;
+			padding: 5px;
+			border: 1px solid #3b62fe;
+			border-radius: 3px;
+			background-color: #3b62fe;
+			color: white;
+
+			width: 120px;
+			height: 50px;
+			vertical-align: middle;
+
+			transition: background-color 0.2s ease;
+		}
+		.placeholder {
+			opacity: 0.25;
+		}
+		.card:hover {
+			background-color: #6688fe;
+		}
+		.selected {
+			background-color: #43b258;
+			border-color: #43b258;
+		}
+		.selected:hover {
+			background-color: #6cc87f;
+		}
+
+		.active {
+			background-color: #f5f5f5;
+		}
+
+		#details {
+			border-left: 2px solid black;
+			margin-left: 20px;
+			padding-left: 20px;
+		}
+		#details .close {
+			float: right;
+			font-weight: bold;
+		}
+		#details label {
+			font-weight: bold;
+		}
+		#details div {
+			margin: 3px 5px;
+			padding: 3px 5px;
+			max-width: 500px;
+		}
+		</style>
+	</head>
+	<body>
+		<div>
+			<table id="storyboard">
+			</table>
+			<label>Monitor dropped file <input type="checkbox" value="1" /></label>
+			<button class="save">save</button>
+		</div>
+		<div id="details" >
+			<a class="close" href="#">close</a>
+			<label>Title:</label><div id="title" ></div>
+			<label>Description:</label><div id="description" ></div>
+		</div>
+		<script type="text/javascript" >
+		var stories = [
+			{
+				title: "Dummy story",
+				area: "Unknown",
+				version: "Backlog",
+				description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec pharetra leo eu dignissim finibus. Cras ipsum justo, consequat non efficitur in, tincidunt nec ante. Suspendisse ac congue justo. Morbi interdum, erat vel ornare blandit, purus risus posuere orci, ut aliquet mi nibh at enim. Vivamus mollis, sapien vitae rutrum tristique, nibh magna lacinia dui, scelerisque tristique lectus dolor eu metus. Pellentesque auctor orci turpis, in gravida ipsum mollis lobortis. Proin dolor nibh, ultricies et dignissim eu, finibus maximus erat. Nullam pretium bibendum porttitor. Mauris semper feugiat condimentum.",
+			},
+		];
+
+		var areas = [
+			"Unknown",
+		];
+
+		var versions = [
+			"Backlog",
+		];
+		/*
+		stories.map(function (story) {
+			return story.area;
+		}).filter(function (area) {
+			return !! area;
+		}).sort();
+		*/
+
+		var board = $('#storyboard');
+
+		function render (areas, versions, stories) {
+			board.empty();
+			var header = $('<tr />');
+			header.appendTo(board);
+			$('<th />').appendTo(header);
+			for (var area of areas.entries()) {
+				area = area[1];
+
+				var element = $('<th />');
+				element.text(area);
+				element.appendTo(header);
+			}
+			for (var version of versions.entries()) {
+				var i = version[0];
+				version = version[1];
+				var versionElement = $('<tr />', {"class": "version"})
+					.appendTo(board)
+					.data("version", version);
+
+				var versionHeader = $('<th />')
+					.text(version)
+					.appendTo(versionElement);
+
+				for (var area of areas.entries()) {
+					var j = area[0];
+					area = area[1];
+					var areaElement = $('<td />', {"class": "area"})
+						.appendTo(versionElement)
+						.data("area",area);
+
+					for (var story of stories.entries()) {
+						var k = story[0];
+						story = story[1];
+						if (story.area == area && story.version == version) {
+							var storyElement = $('<div />', {"class": "card", "id": "card_" + i + "_" + j + "_" + k})
+								.append(story.title)
+								.appendTo(areaElement)
+								.data("story", story)
+								.click(function (e) {
+									$(".selected").removeClass("selected");
+									$(e.target).addClass("selected");
+									var story = $(e.target).data("story");
+									$("#title").text(story.title);
+									$("#description").text(story.description);
+
+									$('#details').fadeIn(200);
+								});
+						}
+					}
+				}
+			}
+			$('.area').sortable({
+				connectWith: ".area",
+				cursor: "move",
+				items: "> .card",
+				opacity: 0.5,
+				placeholder: "placeholder",
+				forcePlaceHolderSize: true,
+				receive: function (event, ui) {
+					var area = $(this).data("area");
+					var version = $(this).parent(".version").data("version");
+					var story = ui.item.data("story");
+
+					story.area = area;
+					story.version = version;
+
+					// Make sure data is updated
+					ui.item.data("story", story);
+
+					console.log(version, area);
+				},
+			});
+		}
+
+		$(function () {
+			$('#details .close')
+				.click(function(e) {
+					e.preventDefault();
+					$(".selected").removeClass("selected");
+					$('#details').fadeOut(200);
+				});
+			$('#details').fadeOut(0);
+			$('button.save')
+				.click(function (e) {
+					stories = $(".area").children(".card").map(function () {
+						return $(this).data("story");
+					}).toArray();
+					console.log(jsyaml.safeDump(stories));
+				});
+
+			render(areas, versions, stories);
+
+			////////////////////////////////////////////////////////////////
+			var body = $('body').get(0);
+			body.addEventListener("dragover", function (e) {
+				e.stopPropagation();
+				e.preventDefault();
+				e.dataTransfer.dropEffect = "copy";
+			}, false);
+			body.addEventListener("drop", function (e) {
+				e.stopPropagation();
+				e.preventDefault();
+
+				var files = e.dataTransfer.files;
+				for (var i = 0, f; f = files[i]; ++i) {
+					var file = f;
+					var readFunc = function () {
+						var reader = new FileReader();
+
+						reader.onload = function (e) {
+							//console.log(e.target.result);
+							var data = jsyaml.safeLoad(e.target.result);
+							var areas = data.areas;
+							var versions = data.versions;
+							var stories = data.stories;
+
+							render(areas, versions, stories);
+						};
+
+						reader.readAsText(file);
+
+						if (!! $('input[type=checkbox]:checked').length) {
+							setTimeout(readFunc, 5000);
+						}
+					}
+
+					readFunc();
+				}
+			}, false);
+		});
+		</script>
+	</body>
+</html>

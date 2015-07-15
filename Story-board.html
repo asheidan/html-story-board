@@ -1,12 +1,12 @@
 <html>
 	<head>
-		<!--script type="text/javascript" src="http://code.jquery.com/jquery-2.1.4.min.js"></script-->
+		<!--<script type="text/javascript" src="http://code.jquery.com/jquery-2.1.4.min.js"></script>-->
 		<script type="text/javascript" src="jquery-2.1.4.min.js"></script>
-		<!--script type="text/javascript" src="http://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script-->
+		<!--<script type="text/javascript" src="http://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script>-->
 		<script type="text/javascript" src="jquery-ui.min.js"></script>
-		<!--script type="text/javascript" src="https://raw.githubusercontent.com/yaml/js-yaml/master/js-yaml.min.js"></script-->
-		<!--script type="text/javascript" src="js-yaml.js"></script-->
-		<script type="text/javascript" src="bower_components/js-yaml/dist/js-yaml.js"></script>
+		<!--<script type="text/javascript" src="https://raw.githubusercontent.com/yaml/js-yaml/master/js-yaml.min.js"></script>-->
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/3.3.1/js-yaml.js"></script>
+		<!--<script type="text/javascript" src="bower_components/js-yaml/dist/js-yaml.js"></script>-->
 		<style>
 		html, td {
 			font-family: Avenir next, sans-serif;
@@ -15,16 +15,21 @@
 
 		body {
 			display: flex;
+			margin: 0px;
 		}
 		.version {
 			padding: 5px;
 			border-bottom: 2px solid black;
+		}
+		th {
+			padding: 3px 5px;
 		}
 		.version th {
 			vertical-align: bottom;
 		}
 		#storyboard {
 			border-collapse: collapse;
+			margin: 10px;
 		}
 		.area {
 			vertical-align: top;
@@ -45,6 +50,13 @@
 
 			transition: background-color 0.2s ease;
 		}
+		.incomplete:before {
+			content: "!";
+			font-weight: bold;
+			color: red;
+			float: right;
+			margin-left: 5px;
+		}
 		.placeholder {
 			opacity: 0.25;
 		}
@@ -63,14 +75,24 @@
 			background-color: #f5f5f5;
 		}
 
+		#table table tbody {
+			max-height: 90%;
+		}
+
+		#table, #details {
+			max-height: 100%;
+			overflow-y: auto;
+			box-sizing: border-box;
+		}
 		#details {
+			background-color: white;
 			border-left: 2px solid black;
-			margin-left: 20px;
 			padding-left: 20px;
 		}
 		#details .close {
 			float: right;
 			font-weight: bold;
+			margin: 5px 8px;
 		}
 		#details label {
 			font-weight: bold;
@@ -79,11 +101,12 @@
 			margin: 3px 5px;
 			padding: 3px 5px;
 			max-width: 500px;
+			font-size: 120%;
 		}
 		</style>
 	</head>
 	<body>
-		<div>
+		<div id="table">
 			<table id="storyboard">
 			</table>
 			<label>Monitor dropped file <input type="checkbox" value="1" /></label>
@@ -91,8 +114,10 @@
 		</div>
 		<div id="details" >
 			<a class="close" href="#">close</a>
-			<label>Title:</label><div id="title" ></div>
-			<label>Description:</label><div id="description" ></div>
+			<h2 id="title" ></h2>
+			<label>Who:</label><div id="who" ></div>
+			<label>What:</label><div id="what" ></div>
+			<label>Why:</label><div id="why" ></div>
 		</div>
 		<script type="text/javascript" >
 		var stories = [
@@ -119,12 +144,11 @@
 		}).sort();
 		*/
 
-		var board = $('#storyboard');
-
 		function render (areas, versions, stories) {
-			board.empty();
-			var header = $('<tr />');
-			header.appendTo(board);
+			var table = $('#storyboard').empty();
+			var header = $('<tr />').appendTo($('<thead />').appendTo(table));
+			var board = $('<tbody />').appendTo(table);
+
 			$('<th />').appendTo(header);
 			for (var area of areas.entries()) {
 				area = area[1];
@@ -156,7 +180,7 @@
 						story = story[1];
 						if (story.area == area && story.version == version) {
 							var storyElement = $('<div />', {"class": "card", "id": "card_" + i + "_" + j + "_" + k})
-								.append(story.title)
+								.text(story.title)
 								.appendTo(areaElement)
 								.data("story", story)
 								.click(function (e) {
@@ -164,10 +188,25 @@
 									$(e.target).addClass("selected");
 									var story = $(e.target).data("story");
 									$("#title").text(story.title);
-									$("#description").text(story.description);
+									if (story.description) {
+										$("#what").text(story.description.what);
+										$('#who').text(story.description.who);
+										$('#why').text(story.description.why);
+									}
+									else {
+										$("#what").empty();
+										$('#who').empty();
+										$('#why').empty();
+									}
 
 									$('#details').fadeIn(200);
 								});
+							if (!story.area || !story.version || !story.title ||
+								!story.description || !story.description.who ||
+								!story.description.what || !story.description.why)
+							{
+								storyElement.addClass("incomplete");
+							}
 						}
 					}
 				}
@@ -224,6 +263,8 @@
 				e.stopPropagation();
 				e.preventDefault();
 
+				$('#details').fadeOut(0);
+
 				var files = e.dataTransfer.files;
 				for (var i = 0, f; f = files[i]; ++i) {
 					var file = f;
@@ -243,7 +284,7 @@
 						reader.readAsText(file);
 
 						if (!! $('input[type=checkbox]:checked').length) {
-							setTimeout(readFunc, 5000);
+							setTimeout(readFunc, 10000);
 						}
 					}
 

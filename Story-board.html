@@ -50,7 +50,15 @@
 
 			transition: background-color 0.2s ease;
 		}
-		.incomplete:before {
+		.card .points:before { content: '('; }
+		.card .points:after { content: ')'; }
+		.card .points {
+			float: right;
+			margin-left: 5px;
+		}
+
+
+		.card.incomplete:before {
 			content: "!";
 			font-weight: bold;
 			color: red;
@@ -118,8 +126,10 @@
 			<label>Who:</label><div id="who" ></div>
 			<label>What:</label><div id="what" ></div>
 			<label>Why:</label><div id="why" ></div>
+			<label>Points:</label> <span id="points" ></span>
 		</div>
 		<script type="text/javascript" >
+		'use strict';
 		var stories = [
 			{
 				title: "Dummy story",
@@ -144,10 +154,48 @@
 		}).sort();
 		*/
 
-		function render (areas, versions, stories) {
+		function dataTree(areas, versions, stories) {
+			var data = {};
+
+			versions.forEach(function (version) {
+				data[version] = {};
+
+				areas.forEach(function (area) {
+					data[version][area] = [];
+				});
+			});
+
+			stories.forEach(function (story) {
+				try {
+					data[story.version][story.area].push(story);
+				}
+				catch(e) {
+					console.log("Cannot add '" + story.title + "' since area or version is unknown", story);
+				}
+			});
+
+			return data;
+		}
+
+		function calculatePoints(topElement) {
+			$(topElement).find('.version').each(function (i, versionElement) {
+				var versionPoints = 0.0;
+				$(versionElement).find('.card').each(function (j, card) {
+					var cardPoints = $(card).data("story").points;
+					console.log(cardPoints);
+					versionPoints += cardPoints || 0.0;
+				});
+
+				$(versionElement).find('th .points').text(" (" + (versionPoints || '?') + ")");
+			});
+		}
+
+		function render(areas, versions, stories) {
 			var table = $('#storyboard').empty();
 			var header = $('<tr />').appendTo($('<thead />').appendTo(table));
 			var board = $('<tbody />').appendTo(table);
+
+			var data = dataTree(areas, versions, stories);
 
 			$('<th />').appendTo(header);
 			for (var area of areas.entries()) {
@@ -166,6 +214,7 @@
 
 				var versionHeader = $('<th />')
 					.text(version)
+					.append($('<span />', {'class': 'points'}))
 					.appendTo(versionElement);
 
 				for (var area of areas.entries()) {
@@ -175,42 +224,54 @@
 						.appendTo(versionElement)
 						.data("area",area);
 
-					for (var story of stories.entries()) {
+					for (var story of data[version][area].entries()) {
 						var k = story[0];
 						story = story[1];
-						if (story.area == area && story.version == version) {
-							var storyElement = $('<div />', {"class": "card", "id": "card_" + i + "_" + j + "_" + k})
-								.text(story.title)
-								.appendTo(areaElement)
-								.data("story", story)
-								.click(function (e) {
-									$(".selected").removeClass("selected");
-									$(e.target).addClass("selected");
-									var story = $(e.target).data("story");
-									$("#title").text(story.title);
-									if (story.description) {
-										$("#what").text(story.description.what);
-										$('#who').text(story.description.who);
-										$('#why').text(story.description.why);
-									}
-									else {
-										$("#what").empty();
-										$('#who').empty();
-										$('#why').empty();
-									}
+						if (story.area != area || story.version != version) {
+							console.log("ERROR: Found story with wrong area or version in ", area, version);
+							continue;
+						}
 
-									$('#details').fadeIn(200);
-								});
-							if (!story.area || !story.version || !story.title ||
-								!story.description || !story.description.who ||
-								!story.description.what || !story.description.why)
-							{
-								storyElement.addClass("incomplete");
-							}
+						var storyElement = $('<div />', {"class": "card", "id": "card_" + i + "_" + j + "_" + k})
+							.text(story.title)
+							.appendTo(areaElement)
+							.data("story", story)
+							.click(function (e) {
+								$(".selected").removeClass("selected");
+								$(e.target).addClass("selected");
+								var story = $(e.target).data("story");
+								$("#title").text(story.title);
+								if (story.description) {
+									$("#what").text(story.description.what);
+									$('#who').text(story.description.who);
+									$('#why').text(story.description.why);
+									$('#points').text(story.points || '?');
+								}
+								else {
+									$("#what").empty();
+									$('#who').empty();
+									$('#why').empty();
+									$('#points').empty();
+								}
+
+								$('#details').fadeIn(200);
+							});
+						if (story.points) {
+							storyElement.prepend($('<div />', {'class': 'points'}).text(story.points));
+						}
+
+						if (!story.area || !story.version || !story.title ||
+							!story.description || !story.description.who ||
+							!story.description.what || !story.description.why)
+						{
+							storyElement.addClass("incomplete");
 						}
 					}
 				}
 			}
+
+			calculatePoints(board);
+
 			$('.area').sortable({
 				connectWith: ".area",
 				cursor: "move",
@@ -230,6 +291,7 @@
 					ui.item.data("story", story);
 
 					console.log(version, area);
+					calculatePoints($('#storyboard'));
 				},
 			});
 		}

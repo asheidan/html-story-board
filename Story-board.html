@@ -359,38 +359,42 @@
 
 			calculatePoints(board);
 
-			$('.area').sortable({
-				connectWith: ".area",
-				cursor: "move",
-				items: "> .card",
-				opacity: 0.5,
-				placeholder: "placeholder",
-				forcePlaceHolderSize: true,
-				receive: function (event, ui) {
-					var area = $(this).data("area");
-					var version = $(this).parent(".version").data("version");
-					var story = ui.item.data("story");
+			if ($.sortable) {
+				$('.area').sortable({
+					connectWith: ".area",
+					cursor: "move",
+					items: "> .card",
+					opacity: 0.5,
+					placeholder: "placeholder",
+					forcePlaceHolderSize: true,
+					receive: function (event, ui) {
+						var area = $(this).data("area");
+						var version = $(this).parent(".version").data("version");
+						var story = ui.item.data("story");
 
-					story.area = area;
-					story.version = version;
+						story.area = area;
+						story.version = version;
 
-					// Make sure data is updated
-					ui.item.data("story", story);
+						// Make sure data is updated
+						ui.item.data("story", story);
 
-					//console.log(version, area);
-					calculatePoints($('#storyboard'));
-				},
-			});
+						//console.log(version, area);
+						calculatePoints($('#storyboard'));
+					},
+				});
+			}
 
-			$('#storyboard').tooltip({
-				content: function () {
-					var description = $(this).data("story").description;
-					if (description) {
-						return description.what;
-					}
-				},
-				items: ".card",
-			});
+			if ($.tooltip) {
+				$('#storyboard').tooltip({
+					content: function () {
+						var description = $(this).data("story").description;
+						if (description) {
+							return description.what;
+						}
+					},
+					items: ".card",
+				});
+			}
 		}
 
 		$(function () {

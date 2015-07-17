@@ -161,7 +161,6 @@
 			<label>Who:</label><div id="who" ></div>
 			<label>What:</label><div id="what" ></div>
 			<label>Why:</label><div id="why" ></div>
-			<label>Weight:</label> <span id="points" ></span>
 			<div id="wireframes"></div>
 		</div>
 		<script type="text/javascript" >
@@ -271,7 +270,6 @@
 
 				var versionHeader = $('<th />')
 					.text(version)
-					.append($('<span />', {'class': 'points'}))
 					.appendTo(versionElement);
 
 				for (var area of areas.entries()) {
@@ -305,7 +303,6 @@
 								element.addClass("selected");
 								var story = element.data("story");
 								$("#title").text(story.title);
-								$('#points').text(story.points || '?');
 
 								function addImages() {
 									if (story.images) {
@@ -343,9 +340,6 @@
 						if (story.images) {
 							storyElement.prepend($('<div />', {'class': 'wireframes'}));
 						}
-						if (story.points) {
-							storyElement.prepend($('<div />', {'class': 'points'}).text(story.points));
-						}
 
 						if (!story.area || !story.version || !story.title ||
 							!story.description || !story.description.who ||
@@ -356,8 +350,6 @@
 					}
 				}
 			}
-
-			calculatePoints(board);
 
 			if ($.fn.sortable) {
 				$('.area').sortable({
@@ -379,7 +371,6 @@
 						ui.item.data("story", story);
 
 						//console.log(version, area);
-						calculatePoints($('#storyboard'));
 					},
 				});
 			}

@@ -359,7 +359,7 @@
 
 			calculatePoints(board);
 
-			if ($.sortable) {
+			if ($.fn.sortable) {
 				$('.area').sortable({
 					connectWith: ".area",
 					cursor: "move",
@@ -384,7 +384,7 @@
 				});
 			}
 
-			if ($.tooltip) {
+			if ($.fn.tooltip) {
 				$('#storyboard').tooltip({
 					content: function () {
 						var description = $(this).data("story").description;

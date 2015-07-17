@@ -66,6 +66,25 @@
 		.card:hover .points {
 			color: rgba(255,255,255,1);
 		}
+		.card .wireframes {
+			background-color: rgba(255,255,255,0.8);
+			border: solid #3b62fe;
+			border-width: 0px 1px 1px 0px;
+			box-shadow: 1px 1px 0px rgba(255,255,255,0.8);;
+			margin: 3px 1px 3px 5px;
+			width: 10px;
+			height: 7px;
+			float: right;
+			clear: right;
+			transition: border-color 0.2s ease;
+		}
+		.card:hover .wireframes {border-color: #6688fe;}
+		.card.selected .wireframes {
+			border-color: #43b258;
+		}
+		.card.selected:hover .wireframes {
+			border-color: #6cc87f;
+		}
 
 
 		.card.incomplete:before {
@@ -275,9 +294,16 @@
 							.appendTo(areaElement)
 							.data("story", story)
 							.click(function (e) {
+								var element;
+								if ($(e.target).hasClass("card")) {
+									element = $(e.target);
+								}
+								else {
+									element = $(e.target).parents(".card");
+								}
 								$(".selected").removeClass("selected");
-								$(e.target).addClass("selected");
-								var story = $(e.target).data("story");
+								element.addClass("selected");
+								var story = element.data("story");
 								$("#title").text(story.title);
 								$('#points').text(story.points || '?');
 
@@ -313,6 +339,10 @@
 
 								$('#details').fadeIn(200);
 							});
+
+						if (story.images) {
+							storyElement.prepend($('<div />', {'class': 'wireframes'}));
+						}
 						if (story.points) {
 							storyElement.prepend($('<div />', {'class': 'points'}).text(story.points));
 						}

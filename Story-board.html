@@ -125,6 +125,7 @@
 			background-color: white;
 			border-left: 2px solid black;
 			padding-left: 20px;
+			max-width: 600px;
 		}
 		#details .close {
 			float: right;
@@ -134,10 +135,9 @@
 		#details label {
 			font-weight: bold;
 		}
-		#details div {
+		#details p {
 			margin: 3px 5px;
 			padding: 3px 5px;
-			max-width: 500px;
 			font-size: 120%;
 		}
 		#details #wireframes img {
@@ -158,21 +158,108 @@
 		<div id="details" >
 			<a class="close" href="#">close</a>
 			<h2 id="title" ></h2>
-			<label>Who:</label><div id="who" ></div>
-			<label>What:</label><div id="what" ></div>
-			<label>Why:</label><div id="why" ></div>
+			<!-- <label>Estimate:</label><p id="estimate" ></p> -->
+			<label></label><p id="who" ></p>
+			<label></label><p id="what" ></p>
+			<label></label><p id="why" ></p>
+			<label>Details:</label>
+			<div id="subtasks" ></div>
 			<div id="wireframes"></div>
 		</div>
 		<script type="text/javascript" >
 		'use strict';
 		var stories = [
 			{
-				title: "Dummy story",
-				area: "Unknown",
-				version: "Backlog",
-				description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec pharetra leo eu dignissim finibus. Cras ipsum justo, consequat non efficitur in, tincidunt nec ante. Suspendisse ac congue justo. Morbi interdum, erat vel ornare blandit, purus risus posuere orci, ut aliquet mi nibh at enim. Vivamus mollis, sapien vitae rutrum tristique, nibh magna lacinia dui, scelerisque tristique lectus dolor eu metus. Pellentesque auctor orci turpis, in gravida ipsum mollis lobortis. Proin dolor nibh, ultricies et dignissim eu, finibus maximus erat. Nullam pretium bibendum porttitor. Mauris semper feugiat condimentum.",
+				"Dummy story": {
+					area: "Unknown",
+					version: "Backlog",
+					description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec pharetra leo eu dignissim finibus. Cras ipsum justo, consequat non efficitur in, tincidunt nec ante. Suspendisse ac congue justo. Morbi interdum, erat vel ornare blandit, purus risus posuere orci, ut aliquet mi nibh at enim. Vivamus mollis, sapien vitae rutrum tristique, nibh magna lacinia dui, scelerisque tristique lectus dolor eu metus. Pellentesque auctor orci turpis, in gravida ipsum mollis lobortis. Proin dolor nibh, ultricies et dignissim eu, finibus maximus erat. Nullam pretium bibendum porttitor. Mauris semper feugiat condimentum.",
+				},
 			},
 		];
+
+		function Story() {}
+		Story.fromYaml = function (yaml) {
+			var obj = new Story();
+
+			for (var title in yaml) {
+				var attrs = yaml[title];
+
+				obj.title = title;
+
+				obj.version = attrs.version;
+				obj.area = attrs.area;
+				obj.estimate = attrs.estimate;
+				obj.points = parseFloat(attrs.points);
+
+				obj.description = attrs.description;
+				if (attrs.notes) { obj.notes = attrs.notes; }
+				if (attrs.images) { obj.images = attrs.images; }
+
+				if (attrs.tasks && (typeof attrs.tasks === "Array" || attrs.tasks instanceof Array)) {
+					obj.tasks = attrs.tasks.map(Story.fromYaml);
+				}
+			}
+
+			return obj;
+		};
+
+		Story.prototype.weight = function () {
+			var weight = 0.0;
+
+			if (this.tasks) {
+				weight = this.tasks.map(function (story) {
+					return story.weight();
+				}).reduce(function (a,b) {
+					return a + b;
+				}, 0.0);
+			}
+
+			if (0.0 < weight) {
+				return weight;
+			}
+			else if (this.points) {
+				return this.points;
+			}
+			else {
+				return 0.0;
+			}
+		};
+
+		Story.prototype.toStruct = function () {
+			var self = {};
+
+			if (this.version) { self.version = this.version; }
+			if (this.area) { self.area = this.area; }
+			if (this.description) { self.description = this.description; }
+
+			if (this.notes) { self.notes = this.notes; }
+			if (this.images) { self.images = this.images; }
+			if (this.tasks) {
+				self.tasks = this.tasks.map(function (task) {
+					return task.toStruct();
+				});
+			}
+
+			var result = {};
+			result[this.title] = self;
+			return result;
+		};
+
+		Story.prototype.toBriefHTML = function () {
+			var element = $('<div />')
+				.append($('<strong />').text(this.title))
+				//.append($('<em />').text(" ("+this.weight()+")"))
+				.append($('<div />').text(this.description));
+			if (this.tasks && this.tasks.length) {
+				var list = $('<ul />');
+				this.tasks.map(function (story) {
+					list.append($('<li />').html(story.toBriefHTML()));
+				});
+				element.append(list);
+			}
+			return element;
+		};
 
 		var areas = [
 			"Unknown",
@@ -189,6 +276,29 @@
 		}).sort();
 		*/
 
+		function extractValidBoardStories(epics) {
+			var result = [];
+
+			for (var epic of epics) {
+				var stories = [];
+				if (epic.tasks && epic.tasks.length) {
+					stories = extractValidBoardStories(epic.tasks);
+				}
+
+				if (! stories.length) {
+					if (epic.version && epic.area) {
+						stories.push(epic);
+					}
+				}
+
+				result = result.concat(stories);
+
+			}
+
+			return result;
+
+		}
+
 		function dataTree(areas, versions, stories) {
 			var data = {};
 
@@ -200,7 +310,9 @@
 				});
 			});
 
-			stories.forEach(function (story) {
+			var storyBoardStories = extractValidBoardStories(stories);
+
+			storyBoardStories.forEach(function (story) {
 				try {
 					data[story.version][story.area].push(story);
 				}
@@ -212,11 +324,43 @@
 			return data;
 		}
 
+		function recursivelyExtractKey(key, stories) {
+			if (! stories) {
+				return [];
+			}
+
+			var values = [];
+
+			for (var story of stories) {
+				if (story[key]) {
+					values.push(story[key]);
+				}
+				if (story.tasks) {
+					values = values.concat(recursivelyExtractKey(key, story.tasks));
+				}
+			}
+
+			values = values.sort();
+
+			if (! values.length) {
+				return [];
+			}
+
+			var result = [ values[0] ];
+			for (var i = 1; i < values.length; ++i) {
+				if (values[i-1] !== values[i]) {
+					result.push(values[i]);
+				}
+			}
+
+			return result;
+		}
+
 		function calculatePoints(topElement) {
 			$(topElement).find('.version').each(function (i, versionElement) {
 				var versionPoints = 0.0;
 				$(versionElement).find('.card').each(function (j, card) {
-					var cardPoints = $(card).data("story").points;
+					var cardPoints = $(card).data("story").weight();
 					//console.log(cardPoints);
 					versionPoints += cardPoints || 0.0;
 				});
@@ -232,16 +376,18 @@
 				.hide()
 				.appendTo(element);
 			img.onload = function () {
-				// Using onload to add the images causes them to appear in order of loading instead of order in document
+				/* Using onload to add the images causes them to appear in order of
+				   loading instead of order in document
+				 */
 				element
 					.attr("src", url)
 					.attr("href", url)
 					.fadeIn();
 				/*
-					.magnificPopup({
-						type: 'image',
-					});
-				*/
+				   .magnificPopup({
+				   type: 'image',
+				   });
+				 */
 			};
 			img.src = url;
 		}
@@ -270,6 +416,7 @@
 
 				var versionHeader = $('<th />')
 					.text(version)
+					//.append($('<span />', {"class": "points"}))
 					.appendTo(versionElement);
 
 				for (var area of areas.entries()) {
@@ -324,26 +471,57 @@
 								});
 
 								if (story.description) {
-									$("#what").text(story.description.what);
-									$('#who').text(story.description.who);
-									$('#why').text(story.description.why);
+									$("#what").text(story.description);
+									//$('#who').text(story.description.who);
+									//$('#why').text(story.description.why);
 								}
 								else {
 									$("#what").empty();
 									$('#who').empty();
 									$('#why').empty();
 								}
+								var weight = story.weight();
+								if ( 0.0 < weight) {
+									var format = "";
+									if (weight < 1.0 || weight > 1.0) {
+										format = " days";
+									}
+									else {
+										format = " day";
+									}
+									$("#estimate").text("" + weight + format);
+								}
+								else {
+									$("#estimate").empty();
+								}
 
+								if (story.tasks) {
+									var list = $('<ul />');
+
+									story.tasks.map(function (story) {
+										list.append($('<li />').html(story.toBriefHTML()));
+									});
+									$('#subtasks').html(list);
+								}
+								else {
+									$('#subtasks').empty();
+								}
+								
 								$('#details').fadeIn(200);
 							});
 
 						if (story.images) {
 							storyElement.prepend($('<div />', {'class': 'wireframes'}));
 						}
+						
+						/*
+						var weight = story.weight();
+						if (0.0 < weight) {
+							storyElement.prepend($('<div />', {"class": "points"}).text(weight));
+						}
+						*/
 
-						if (!story.area || !story.version || !story.title ||
-							!story.description || !story.description.who ||
-							!story.description.what || !story.description.why)
+						if (!story.area || !story.version || !story.title || !story.description)
 						{
 							storyElement.addClass("incomplete");
 						}
@@ -370,6 +548,7 @@
 						// Make sure data is updated
 						ui.item.data("story", story);
 
+						calculatePoints($('#storyboard'));
 						//console.log(version, area);
 					},
 				});
@@ -386,6 +565,9 @@
 					items: ".card",
 				});
 			}
+
+
+			calculatePoints(board);
 		}
 
 		$(function () {
@@ -401,7 +583,7 @@
 					stories = $(".area").children(".card").map(function () {
 						return $(this).data("story");
 					}).toArray();
-					console.log(jsyaml.safeDump(stories));
+					console.log(jsyaml.safeDump(stories.map(function (story) { return story.toStruct(); })));
 				});
 
 			render(areas, versions, stories);
@@ -422,20 +604,29 @@
 				var files = e.dataTransfer.files;
 				for (var i = 0, f; f = files[i]; ++i) {
 					var file = f;
+
+					var lastModified = 0;
+
 					var readFunc = function () {
-						var reader = new FileReader();
+						if (file.lastModified != lastModified) {
 
-						reader.onload = function (e) {
-							//console.log(e.target.result);
-							var data = jsyaml.safeLoad(e.target.result);
-							var areas = data.areas;
-							var versions = data.versions;
-							var stories = data.stories;
+							lastModified = file.lastModified;
 
-							render(areas, versions, stories);
-						};
-
-						reader.readAsText(file);
+							var reader = new FileReader();
+							
+							reader.onload = function (e) {
+								//console.log(e.target.result);
+								var data = jsyaml.safeLoad(e.target.result);
+								var stories = data.map(Story.fromYaml);
+								var areas = recursivelyExtractKey("area", stories);
+								var versions = recursivelyExtractKey("version", stories);
+								
+								render(areas, versions, stories);
+							};
+							
+							reader.readAsText(file);
+							
+						}
 
 						if (!! $('input[type=checkbox]:checked').length) {
 							setTimeout(readFunc, 10000);

@@ -162,6 +162,7 @@
 			<label></label><p id="why" ></p>
 			<label>Details:</label>
 			<div id="subtasks" ></div>
+			<div id="invision" ></div>
 			<div id="wireframes"></div>
 		</div>
 		<script type="text/javascript" >
@@ -189,6 +190,8 @@
 				obj.area = attrs.area;
 				obj.estimate = attrs.estimate;
 				obj.points = parseFloat(attrs.points);
+
+				obj.invision = attrs.invision;
 
 				obj.description = attrs.description;
 				if (attrs.notes) { obj.notes = attrs.notes; }
@@ -527,9 +530,21 @@
 								else {
 									$('#subtasks').empty();
 								}
+
+								if (story.invision) {
+									$('#invision').html($('<a />', {"class": "invision-link", "target": "_blank", "href": story.invision}).text("InVision"));
+								}
+								else {
+									$('#invision').empty();
+								}
 								
 								$('#details').fadeIn(200);
 							});
+
+						console.log(story.invision);
+						if (story.invision) {
+							storyElement.prepend($('<div />', {'class': 'invision'}));
+						}
 
 						if (story.images) {
 							storyElement.prepend($('<div />', {'class': 'wireframes'}));

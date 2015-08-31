@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 	<head>
 		<script type="text/javascript" src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
@@ -158,7 +159,7 @@
 		<div id="details" >
 			<a class="close" href="#">close</a>
 			<h2 id="title" ></h2>
-			<!-- <label>Estimate:</label><p id="estimate" ></p> -->
+			<label>Estimate:</label><p id="estimate" ></p>
 			<label></label><p id="who" ></p>
 			<label></label><p id="what" ></p>
 			<label></label><p id="why" ></p>
@@ -168,7 +169,7 @@
 		</div>
 		<script type="text/javascript" >
 		'use strict';
-		var stories = [
+		var data = [
 			{
 				"Dummy story": {
 					area: "Unknown",
@@ -249,7 +250,7 @@
 		Story.prototype.toBriefHTML = function () {
 			var element = $('<div />')
 				.append($('<strong />').text(this.title))
-				//.append($('<em />').text(" ("+this.weight()+")"))
+				.append($('<em />').text(" ("+plDays(this.weight())+")"))
 				.append($('<div />').text(this.description));
 			if (this.tasks && this.tasks.length) {
 				var list = $('<ul />');
@@ -260,6 +261,18 @@
 			}
 			return element;
 		};
+
+		function plDays(days) {
+			var format = ""
+			if (days < 1.0 || days > 1.0) {
+				format = " days";
+			}
+			else {
+				format = " day";
+			}
+
+			return "" + days + format;
+		}
 
 		var areas = [
 			"Unknown",
@@ -357,15 +370,30 @@
 		}
 
 		function calculatePoints(topElement) {
-			$(topElement).find('.version').each(function (i, versionElement) {
+			$(topElement).children("tbody").find('.version').each(function (i, versionElement) {
 				var versionPoints = 0.0;
 				$(versionElement).find('.card').each(function (j, card) {
 					var cardPoints = $(card).data("story").weight();
-					//console.log(cardPoints);
 					versionPoints += cardPoints || 0.0;
 				});
 
 				$(versionElement).find('th .points').text(" (" + (versionPoints || '?') + ")");
+			});
+			$(topElement).find('thead th').each(function (i, columnHeader) {
+				var header = $(columnHeader);
+
+				var klass = header.attr("class");
+
+				if (klass) {
+
+					var areaPoints = 0.0;
+					$(topElement).find("tbody ." + klass).find(".card").each(function (i, card) {
+						var cardPoints = $(card).data("story").weight();
+						areaPoints += cardPoints || 0.0;
+					});
+
+					header.find(".points").text(" (" + (areaPoints || '?') + ")");
+				}
 			});
 		}
 
@@ -401,14 +429,17 @@
 
 			$('<th />').appendTo(header);
 			for (var area of areas.entries()) {
+				var k = area[0];
 				area = area[1];
 
-				var element = $('<th />');
-				element.text(area);
+				var element = $('<th />', {"class": "column-" + k});
+				element
+					.text(area)
+					.append($('<span />', {"class": "points"}))
 				element.appendTo(header);
 			}
 			for (var version of versions.entries()) {
-				var i = version[0];
+				var version_number = version[0];
 				version = version[1];
 				var versionElement = $('<tr />', {"class": "version"})
 					.appendTo(board)
@@ -416,25 +447,25 @@
 
 				var versionHeader = $('<th />')
 					.text(version)
-					//.append($('<span />', {"class": "points"}))
+					.append($('<span />', {"class": "points"}))
 					.appendTo(versionElement);
 
 				for (var area of areas.entries()) {
-					var j = area[0];
+					var area_number = area[0];
 					area = area[1];
-					var areaElement = $('<td />', {"class": "area"})
+					var areaElement = $('<td />', {"class": ["area", "column-" + area_number].join(" ")})
 						.appendTo(versionElement)
 						.data("area",area);
 
 					for (var story of data[version][area].entries()) {
-						var k = story[0];
+						var story_number = story[0];
 						story = story[1];
 						if (story.area != area || story.version != version) {
 							console.log("ERROR: Found story with wrong area or version in ", area, version);
 							continue;
 						}
 
-						var storyElement = $('<div />', {"class": "card", "id": "card_" + i + "_" + j + "_" + k})
+						var storyElement = $('<div />', {"class": "card", "id": "card_" + version_number + "_" + area_number + "_" + story_number})
 							.text(story.title)
 							.appendTo(areaElement)
 							.data("story", story)
@@ -482,14 +513,7 @@
 								}
 								var weight = story.weight();
 								if ( 0.0 < weight) {
-									var format = "";
-									if (weight < 1.0 || weight > 1.0) {
-										format = " days";
-									}
-									else {
-										format = " day";
-									}
-									$("#estimate").text("" + weight + format);
+									$("#estimate").text(plDays(weight));
 								}
 								else {
 									$("#estimate").empty();
@@ -514,12 +538,10 @@
 							storyElement.prepend($('<div />', {'class': 'wireframes'}));
 						}
 						
-						/*
 						var weight = story.weight();
 						if (0.0 < weight) {
 							storyElement.prepend($('<div />', {"class": "points"}).text(weight));
 						}
-						*/
 
 						if (!story.area || !story.version || !story.title || !story.description)
 						{
@@ -549,7 +571,6 @@
 						ui.item.data("story", story);
 
 						calculatePoints($('#storyboard'));
-						//console.log(version, area);
 					},
 				});
 			}
@@ -567,7 +588,7 @@
 			}
 
 
-			calculatePoints(board);
+			calculatePoints($('#storyboard'));
 		}
 
 		$(function () {
@@ -586,6 +607,9 @@
 					console.log(jsyaml.safeDump(stories.map(function (story) { return story.toStruct(); })));
 				});
 
+			var stories = data.map(Story.fromYaml);
+			var areas = recursivelyExtractKey("area", stories);
+			var versions = recursivelyExtractKey("version", stories);
 			render(areas, versions, stories);
 
 			////////////////////////////////////////////////////////////////
